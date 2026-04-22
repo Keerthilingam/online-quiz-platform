@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div style="width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+        <h2>🛠 Admin Tools</h2>
+        <div style="display: flex; gap: 10px;">
+            <button class="secondary-btn" style="width: auto; padding: 10px 20px;" onclick="document.getElementById('view').innerText='add'">Add Question</button>
+            <button class="secondary-btn" style="width: auto; padding: 10px 20px;" onclick="loadUsers()">View Users</button>
+            <button class="danger-btn" style="width: auto; padding: 10px 20px; border:none;" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- ADD QUESTION FORM -->
+    <div class="glass-card" id="add-form" style="max-width: 800px;">
+        <h1>Add New Question to Database</h1>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="sub" placeholder="Subject (e.g., Python)">
+            <!-- Hidden so Admin just focuses on the Subject -->
+            <input type="hidden" id="set" value="Default">
+        </div>
+        <input type="text" id="q_text" placeholder="Question Text (e.g., What does print() do?)">
+        
+        <h3 style="color:#b0bec5; text-align:left;">Multiple Choice Options:</h3>
+        <input type="text" id="opt1" placeholder="Option 1">
+        <input type="text" id="opt2" placeholder="Option 2">
+        <input type="text" id="opt3" placeholder="Option 3">
+        <input type="text" id="opt4" placeholder="Option 4">
+        
+        <h3 style="color:#00e676; text-align:left;">The Correct Answer:</h3>
+        <input type="text" id="correct" placeholder="Type the EXACT text of the correct option here!">
+        
+        <button onclick="addQuestion()" style="margin-top: 20px;">🚀 Push to MongoDB</button>
+    </div>
+
+    <!-- VIEW USERS FORM -->
+    <div class="glass-card hidden" id="users-box" style="max-width: 800px;">
+        <h1>All Registered Users</h1>
+        <table>
+            <thead><tr><th>Email</th><th>Role</th><th>Registered</th></tr></thead>
+            <tbody id="users-table"></tbody>
+        </table>
+    </div>
+
+    <!-- Hidden state manager -->
+    <span id="view" class="hidden">add</span>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if(!token) window.location.href = 'index.html'; // Security check
+
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        // Logic to switch tabs visually
+        setInterval(() => {
+            const v = document.getElementById('view').innerText;
+            if(v === 'add') {
+                document.getElementById('add-form').classList.remove('hidden');
+                document.getElementById('users-box').classList.add('hidden');
+            } else if(v === 'users') {
+                document.getElementById('add-form').classList.add('hidden');
+                document.getElementById('users-box').classList.remove('hidden');
+            }
+        }, 100);
+
+        async function addQuestion() {
+            // Build the exact python dictionary using Javascript!
+            const payload = {
+                subject: document.getElementById('sub').value,
+                set_name: document.getElementById('set').value,
+                question_text: document.getElementById('q_text').value,
+                options: [
+                    document.getElementById('opt1').value,
+                    document.getElementById('opt2').value,
+                    document.getElementById('opt3').value,
+                    document.getElementById('opt4').value
+                ].filter(Boolean), // Removes empty ones
+                correct_answer: document.getElementById('correct').value
+            };
+
+            // Call the Waiter, passing the Admin Token so we don't get rejected!
+            const res = await fetch('http://127.0.0.1:5000/api/quiz/add-question', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await res.json();
+            if(res.ok) {
+                alert("Successfully added to MongoDB!");
+                document.getElementById('q_text').value = ''; // clear UI
+                document.getElementById('correct').value = ''; // clear UI
+            } else {
+                alert("Error: " + (data.error || JSON.stringify(data)));
+            }
+        }
+
+        async function loadUsers() {
+            document.getElementById('view').innerText = 'users'; // switch view
+            
+            const res = await fetch('http://127.0.0.1:5000/api/auth/users', {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                const tbody = document.getElementById('users-table');
+                tbody.innerHTML = '';
+                data.users.forEach(u => {
+                    tbody.innerHTML += `<tr><td>${u.email}</td><td style="color: ${u.role==='admin'?'#ff5252':'#00f2fe'}">${u.role.toUpperCase()}</td><td>${u.created_at || 'Unknown'}</td></tr>`;
+                });
+            } else alert("You are not an Admin!");
+        }
+    </script>
+</body>
+</html>

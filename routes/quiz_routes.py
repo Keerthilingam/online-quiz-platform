@@ -127,3 +127,41 @@ def submit_quiz():
         "score": score, 
         "total": total_questions
     }), 200
+
+# ----------------------------------------------------
+# 4. API: Report Card (View Past Scores)
+# ----------------------------------------------------
+@quiz_bp.route('/my-scores/<email>', methods=['GET'])
+def get_my_scores(email):
+    # Ask MongoDB to find all grades saved for this specific email
+    my_past_scores = list(db.results.find({"email": email}, {"_id": 0}))
+    
+    # If the student hasn't taken any quizzes yet
+    if len(my_past_scores) == 0:
+        return jsonify({"message": "You haven't taken any quizzes yet!"}), 404
+        
+    # Give the student their full report card
+    return jsonify({
+        "student": email, 
+        "report_card": my_past_scores
+    }), 200
+
+# ----------------------------------------------------
+# 5. API: Delete a Question (Admin Feature)
+# ----------------------------------------------------
+@quiz_bp.route('/delete-question', methods=['DELETE'])
+@admin_required
+def delete_question():
+    data = request.get_json()
+    question_text = data.get('question_text')
+    
+    if not question_text:
+        return jsonify({"error": "Please provide the question_text you want to delete."}), 400
+        
+    # Ask MongoDB to delete this exact question
+    result = db.questions.delete_one({"question_text": question_text})
+    
+    if result.deleted_count == 0:
+        return jsonify({"error": "Question not found!"}), 404
+        
+    return jsonify({"message": "Question deleted successfully!"}), 200

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Arena</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navbar -->
+    <div style="width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+        <h2>🎓 Hello, <span id="user-display" style="color:white"></span></h2>
+        <div>
+            <button class="secondary-btn" style="width: auto; padding: 10px 20px;" onclick="viewReportCard()">Report Card</button>
+            <button class="danger-btn" style="width: auto; padding: 10px 20px; border:none;" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- SELECTION SCREEN -->
+    <div class="glass-card" id="selection-card">
+        <h1>Choose Your Quiz</h1>
+        <input type="text" id="subject" placeholder="Enter Subject (e.g., Python)">
+        <!-- We hid the 'set' field so the Admin doesn't have to worry about Sets anymore! -->
+        <input type="hidden" id="set_name" value="Default">
+        <button onclick="startQuiz()">Begin Test</button>
+    </div>
+
+    <!-- QUIZ SCREEN -->
+    <div class="glass-card hidden" id="quiz-card" style="max-width: 800px;">
+        <h1 id="quiz-title">Quiz in Progress</h1>
+        <div id="questions-container"></div>
+        <button onclick="submitQuiz()" style="margin-top: 30px;">🚀 Submit Final Answers</button>
+    </div>
+
+    <!-- REPORT CARD SCREEN -->
+    <div class="glass-card hidden" id="report-card">
+        <h1>Your Past Masteries</h1>
+        <table>
+            <thead><tr><th>Grade</th><th>Out Of</th></tr></thead>
+            <tbody id="scores-body"></tbody>
+        </table>
+        <button class="secondary-btn" onclick="location.reload()" style="margin-top: 20px;">Back to Home</button>
+    </div>
+
+    <script>
+        const email = localStorage.getItem('email');
+        const token = localStorage.getItem('token');
+        if(!token) window.location.href = 'index.html'; // Kick out if not logged in
+        document.getElementById('user-display').innerText = email;
+
+        // Global state to store the student's selected answers
+        let currentQuestions = [];
+        let answers = {}; // Keeps track of what they clicked
+
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        async function startQuiz() {
+            const sub = document.getElementById('subject').value;
+            const set = document.getElementById('set_name').value;
+            
+            const res = await fetch(`http://127.0.0.1:5000/api/quiz/questions/${sub}/${set}`);
+            const data = await res.json();
+            
+            if(data.questions.length === 0) {
+                alert("The teacher hasn't added any questions for this subject yet!");
+                return;
+            }
+
+            // MAGIC ANTI-CHEAT: This randomly shuffles the order of the 16 questions every single time a student logs in!
+            const shuffledQuestions = data.questions.sort(() => Math.random() - 0.5);
+            currentQuestions = shuffledQuestions;
+
+            document.getElementById('selection-card').classList.add('hidden');
+            document.getElementById('quiz-card').classList.remove('hidden');
+            document.getElementById('quiz-title').innerText = `${sub} Exam`;
+
+            const container = document.getElementById('questions-container');
+            container.innerHTML = ''; // clear 
+
+            // Build all the questions visually on the screen
+            currentQuestions.forEach((q, index) => {
+                const block = document.createElement('div');
+                block.style.background = 'rgba(0,0,0,0.3)';
+                block.style.padding = '20px';
+                block.style.borderRadius = '15px';
+                block.style.marginBottom = '20px';
+                
+                block.innerHTML = `<h2 style="margin-bottom: 20px;">${index + 1}. ${q.question_text}</h2>`;
+                
+                q.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => {
+                        // Highlight the selected option when clicked
+                        const siblings = block.getElementsByClassName('option-btn');
+                        for(let b of siblings) b.classList.remove('selected');
+                        btn.classList.add('selected');
+                        
+                        // Save their answer into our dictionary!
+                        answers[q.question_text] = opt;
+                    };
+                    block.appendChild(btn);
+                });
+                container.appendChild(block);
+            });
+        }
+
+        async function submitQuiz() {
+            if(Object.keys(answers).length < currentQuestions.length) {
+                if(!confirm("You haven't answered all questions! Submit anyway?")) return;
+            }
+
+            // Pack up the answers and send to Python Waiter!
+            const payload = { email: email, answers: answers };
+            const res = await fetch(`http://127.0.0.1:5000/api/quiz/submit-quiz`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                alert(`Quiz Over! You scored ${data.score} out of ${data.total}!`);
+                location.reload();
+            }
+        }
+
+        async function viewReportCard() {
+            const res = await fetch(`http://127.0.0.1:5000/api/quiz/my-scores/${email}`);
+            const data = await res.json();
+            
+            document.getElementById('selection-card').classList.add('hidden');
+            document.getElementById('quiz-card').classList.add('hidden');
+            document.getElementById('report-card').classList.remove('hidden');
+
+            const tbody = document.getElementById('scores-body');
+            tbody.innerHTML = '';
+            
+            if(res.ok) {
+                data.report_card.forEach(scoreObj => {
+                    tbody.innerHTML += `<tr><td><strong style="color:#00e676">${scoreObj.score}</strong></td><td>${scoreObj.total}</td></tr>`;
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="2">No past scores yet! Go take a test!</td></tr>`;
+            }
+        }
+    </script>
+</body>
+</html>

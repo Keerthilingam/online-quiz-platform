@@ -17,6 +17,12 @@ def register():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'user') # Default everyone to 'user' role unless specified
+    admin_secret = data.get('admin_secret', '')
+
+    # SECURITY CHECK: Make sure sneaky students can't just send "role": "admin"
+    if role == 'admin':
+        if admin_secret != 'TEACHER123':
+            return jsonify({"error": "Nice try! You need the secret Teacher Code to be an admin."}), 403
 
     # 3. Simple Validation
     if not email or not password:
@@ -74,3 +80,32 @@ def login():
     )
 
     return jsonify({"message": "Login successful!", "token": token}), 200
+
+# ----------------------------------------------------
+# 3. API: Manage Users (Admin Feature)
+# ----------------------------------------------------
+@auth_bp.route('/users', methods=['GET'])
+def get_all_users():
+    # 1. Grab token to prove they are admin
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({"error": "VIP Wristband missing!"}), 403
+        
+    try:
+        # Separate the word 'Bearer' from the actual token
+        if "Bearer " in token:
+            token_string = token.split(" ")[1] 
+        else:
+            token_string = token
+
+        # Crack the token open
+        decoded_data = jwt.decode(token_string, os.getenv('SECRET_KEY', 'super_secret_key_for_jwt'), algorithms=["HS256"])
+        if decoded_data.get('role') != 'admin':
+            return jsonify({"error": "Unauthorized! Only admins can view the user list."}), 403
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token!"}), 403
+
+    # 2. Get all users, but HIDE their passwords! {"password": 0} means "hide this"
+    all_users = list(db.users.find({}, {"_id": 0, "password": 0}))
+    
+    return jsonify({"users": all_users}), 200
