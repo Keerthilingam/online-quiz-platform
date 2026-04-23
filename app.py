@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+import os
 from flask_cors import CORS
 
 # We move our database logic into its own file (database.py) to keep app.py clean!
@@ -25,4 +26,6 @@ def home():
 
 # Start the server
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Render uses the 'PORT' environment variable, so we must detect it!
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
