@@ -83,7 +83,7 @@
             };
 
             // Call the Waiter, passing the Admin Token so we don't get rejected!
-            const res = await fetch('http://127.0.0.1:5000/api/quiz/add-question', {
+            const res = await fetch('https://online-quiz-platform-9vug.onrender.com/api/quiz/add-question', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -105,7 +105,7 @@
         async function loadUsers() {
             document.getElementById('view').innerText = 'users'; // switch view
             
-            const res = await fetch('http://127.0.0.1:5000/api/auth/users', {
+            const res = await fetch('https://online-quiz-platform-9vug.onrender.com/api/auth/users', {
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + token }
             });

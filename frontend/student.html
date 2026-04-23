@@ -57,7 +57,7 @@
             const sub = document.getElementById('subject').value;
             const set = document.getElementById('set_name').value;
             
-            const res = await fetch(`http://127.0.0.1:5000/api/quiz/questions/${sub}/${set}`);
+            const res = await fetch(`https://online-quiz-platform-9vug.onrender.com/api/quiz/questions/${sub}/${set}`);
             const data = await res.json();
             
             if(data.questions.length === 0) {
@@ -112,7 +112,7 @@
 
             // Pack up the answers and send to Python Waiter!
             const payload = { email: email, answers: answers };
-            const res = await fetch(`http://127.0.0.1:5000/api/quiz/submit-quiz`, {
+            const res = await fetch(`https://online-quiz-platform-9vug.onrender.com/api/quiz/submit-quiz`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -126,7 +126,7 @@
         }
 
         async function viewReportCard() {
-            const res = await fetch(`http://127.0.0.1:5000/api/quiz/my-scores/${email}`);
+            const res = await fetch(`https://online-quiz-platform-9vug.onrender.com/api/quiz/my-scores/${email}`);
             const data = await res.json();
             
             document.getElementById('selection-card').classList.add('hidden');
